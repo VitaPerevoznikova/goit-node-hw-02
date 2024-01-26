@@ -9,7 +9,8 @@ const { User } = require("../models/user");
 const { HttpError, ctrlWrapper } = require("../helpers");
 
 const { SECRET_KEY } = process.env;
-const avatarDir = path.join(__dirname, "../", "public/avatars");
+// const avatarDir = path.join(__dirname, "../", "public", "avatars");
+const avatarDir = path.resolve('public', 'avatars');
 
 const register = async (req, res) => {
   const { email, password, subscription } = req.body;
@@ -91,21 +92,25 @@ const updateAvatar = async (req, res) => {
   }
   const { _id } = req.user;
   const { path: tempUpload, originalname } = req.file;
-   await Jimp.read(tempUpload)
+   
+  await Jimp.read(tempUpload)
     .then((avatar) => {
       return avatar
-        .resize(250, 250) // resize
-        .quality(60) // set JPEG quality
-        .write(tempUpload); // save
+        .resize(250, 250) 
+        .quality(60) 
+        .write(tempUpload); 
     })
     .catch((err) => {
       throw err;
     });
   const filename = `${_id}_${originalname}`;
+  
   const resultUpload = path.join(avatarDir, filename);
   await fs.rename(tempUpload, resultUpload);
+  
   const avatarURL = path.join("avatars", filename);
   await User.findByIdAndUpdate(_id, { avatarURL });
+  
   res.json({
     avatarURL,
   });
