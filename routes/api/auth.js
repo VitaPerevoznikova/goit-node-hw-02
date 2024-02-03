@@ -3,11 +3,9 @@ const router = express.Router();
 
 const ctrl = require("../../controllers/auth");
 
-const { validateBody, authenticate } = require("../../middlewares");
+const { validateBody, authenticate, upload } = require("../../middlewares");
 
 const { schemas } = require("../../models/user");
-
-// router.post( "/user/register", validateBody(schemas.registerSchema),ctrl.register);
 
 router.post( "/register", validateBody(schemas.registerSchema),ctrl.register);
 
@@ -23,5 +21,12 @@ router.patch(
   validateBody(schemas.subscriptionListSchema),
   ctrl.updateSubscription
 );
+router.patch(
+  "/avatars",
+   authenticate,
+  upload.single("avatar"),
+  ctrl.updateAvatar
+);
+
 
 module.exports = router;
