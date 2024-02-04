@@ -9,9 +9,8 @@ const crypto = require("node:crypto");
 const { User } = require("../models/user");
 const { HttpError, ctrlWrapper, sendEmail } = require("../helpers");
 
-const { BASE_URL } = process.env;
+const { SECRET_KEY, BASE_URL } = process.env;
 
-// const avatarDir = path.join(__dirname, "../", "public", "avatars");
 const avatarDir = path.resolve("public", "avatars");
 
 const register = async (req, res) => {
@@ -85,43 +84,34 @@ const resendVerifyEmail = async (req, res) => {
   res.json({ message: "Verification email sent" });
 };
 
-async function login(req, res, next) {
+const login = async (req, res) => {
   const { email, password } = req.body;
 
-  try {
-    const user = await User.findOne({ email });
-
-    if (user === null) {
-      return res
-        .status(401)
-        .send({ message: "Email or password is incorrect" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (isMatch === false) {
-      return res
-        .status(401)
-        .send({ message: "Email or password is incorrect" });
-    }
-
-    if (user.verify === false) {
-      return res.status(401).send({ message: "Your account is not verified" });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, name: user.name },
-      process.env.SECRET_KEY,
-      { expiresIn: "23h" }
-    );
-
-    await User.findByIdAndUpdate(user._id, { token });
-
-    res.send({ token });
-  } catch (error) {
-    next(error);
+  if (!email || !password) {
+    throw HttpError(401, "Email or password is wrong");
   }
-}
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw HttpError(401, "Email or password is wrong");
+  }
+  if (!user.verify) {
+    throw HttpError(401, "User not found");
+  }
+
+  const passwordCompare = await bcrypt.compare(password, user.password);
+  if (!passwordCompare) {
+    throw HttpError(401, "Email or password is wrong");
+  }
+  const payload = {
+    id: user._id,
+  };
+  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "24h" });
+  await User.findByIdAndUpdate(user._id, { token });
+  res.json({
+    token,
+    user: { email: user.email, subscription: user.subscription },
+  });
+};
 
 const logout = async (req, res) => {
   const { _id } = req.user;
